@@ -6,23 +6,24 @@ defmodule WebmatricesPhoenix.Sites.Site do
     field :url, :string
   end
 
-  @site ~r/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/
+  @site_or_domain ~r/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/
   def changeset(site, attrs) do
     site
     |> cast(attrs, [:url])
     |> validate_required([:url])
-    |> validate_format(:url, @site, message: "must be a valid site")
-  end
-
-  def domain(url) do
-    url = URI.parse(url)
-
-    url.authority
+    |> validate_format(:url, @site_or_domain, message: "must be a valid site")
   end
 
   def validate_domain(%Ecto.Changeset{valid?: true, changes: %{url: url}} = changeset) do
     IO.inspect(url, label: "URL")
-    domain = domain(url)
+
+    domain =
+      case URI.parse(url) do
+        %URI{host: nil} -> url
+        %URI{host: host} -> host
+        %URI{host: %URI.Error{reason: _}} -> url
+      end
+
     {:ok, %{domain: domain, changeset: changeset}}
   end
 
